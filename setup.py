@@ -17,5 +17,5 @@ setup(
     py_modules=["no_implicit_optional"],
     entry_points={"console_scripts": ["no_implicit_optional=no_implicit_optional:main"]},
     install_requires=["libcst"],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )
