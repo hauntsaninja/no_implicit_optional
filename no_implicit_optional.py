@@ -15,6 +15,18 @@ from libcst.codemod import (
 from libcst.codemod.visitors import AddImportsVisitor
 
 
+def is_typing_any(expr: cst.BaseExpression) -> bool:
+    if isinstance(expr, cst.Name):
+        return expr.value == "Any"
+    if isinstance(expr, cst.Attribute):
+        return (
+            expr.attr.value == "Any"
+            and isinstance(expr.value, cst.Name)
+            and expr.value.value in ("typing", "t")
+        )
+    return False
+
+
 def is_typing_optional(expr: cst.BaseExpression) -> bool:
     if isinstance(expr, cst.Name):
         return expr.value == "Optional"
@@ -85,7 +97,8 @@ def is_optional_sounding_alias(expr: cst.BaseExpression) -> bool:
 
 def type_hint_explicitly_allows_none(expr: cst.BaseExpression) -> bool:
     return (
-        is_typing_optional(expr)
+        is_typing_any(expr)
+        or is_typing_optional(expr)
         or is_typing_union_with_none(expr)
         or is_pep_604_union_with_none(expr)
         or is_literal_with_none(expr)
@@ -152,6 +165,10 @@ def test() -> None:
     assert not type_hint_explicitly_allows_none(cst.parse_expression("str"))
     assert not type_hint_explicitly_allows_none(cst.parse_expression("List[str]"))
     assert not type_hint_explicitly_allows_none(cst.parse_expression("typing.Tuple[str]"))
+
+    assert type_hint_explicitly_allows_none(cst.parse_expression("Any"))
+    assert type_hint_explicitly_allows_none(cst.parse_expression("t.Any"))
+    assert type_hint_explicitly_allows_none(cst.parse_expression("typing.Any"))
 
     assert type_hint_explicitly_allows_none(cst.parse_expression("Optional"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("Optional[int]"))
