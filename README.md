@@ -18,7 +18,7 @@ no_implicit_optional <path>
 
 ## What's going on?
 
-By default, mypy 0.980 and earlier allowed eliding `Optional` for arguments with default values of
+By default, mypy 0.982 and earlier allowed eliding `Optional` for arguments with default values of
 `None`. From experience, this was found to be a source of confusion and bugs.
 
 In 2018, PEP 484 was updated to require the explicit use of `Optional` (or a `Union` with `None`)
