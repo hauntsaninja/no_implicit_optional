@@ -132,7 +132,7 @@ class NoImplicitOptionalCommand(VisitorBasedCodemodCommand):
 
             allows_none, expr = type_hint_explicitly_allows_none_with_expr(top_level_expr)
             if not allows_none:
-                new_expr = cst.Subscript(
+                new_expr: cst.BaseExpression = cst.Subscript(
                     value=cst.Name(value="Optional"),
                     slice=[cst.SubscriptElement(cst.Index(value=expr))],
                 )
