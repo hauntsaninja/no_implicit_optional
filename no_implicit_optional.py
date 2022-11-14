@@ -2,6 +2,7 @@ import argparse
 import os
 import re
 import sys
+from typing import Tuple
 
 import libcst as cst
 from libcst.codemod import (
@@ -99,7 +100,7 @@ def is_typing_annotated(expr: cst.BaseExpression) -> bool:
 
 def type_hint_explicitly_allows_none_with_expr(
     expr: cst.BaseExpression,
-) -> tuple[bool, cst.BaseExpression]:
+) -> Tuple[bool, cst.BaseExpression]:
     if is_typing_annotated(expr):
         assert isinstance(expr, cst.Subscript)
         assert isinstance(expr.slice[0].slice, cst.Index)
