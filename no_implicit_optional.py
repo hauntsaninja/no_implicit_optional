@@ -83,14 +83,40 @@ def is_optional_sounding_alias(expr: cst.BaseExpression) -> bool:
     )
 
 
-def type_hint_explicitly_allows_none(expr: cst.BaseExpression) -> bool:
+def is_typing_annotated(expr: cst.BaseExpression) -> bool:
+    if isinstance(expr, cst.Name):
+        return expr.value == "Annotated"
+    if isinstance(expr, cst.Attribute):
+        return (
+            expr.attr.value == "Annotated"
+            and isinstance(expr.value, cst.Name)
+            and expr.value.value in ("typing", "t")
+        )
+    if isinstance(expr, cst.Subscript):
+        return is_typing_annotated(expr.value)
+    return False
+
+
+def type_hint_explicitly_allows_none_with_expr(
+    expr: cst.BaseExpression,
+) -> tuple[bool, cst.BaseExpression]:
+    if is_typing_annotated(expr):
+        assert isinstance(expr, cst.Subscript)
+        assert isinstance(expr.slice[0].slice, cst.Index)
+        return type_hint_explicitly_allows_none_with_expr(expr.slice[0].slice.value)
+
     return (
         is_typing_optional(expr)
         or is_typing_union_with_none(expr)
         or is_pep_604_union_with_none(expr)
         or is_literal_with_none(expr)
         or is_optional_sounding_alias(expr)
-    )
+    ), expr
+
+
+def type_hint_explicitly_allows_none(expr: cst.BaseExpression) -> bool:
+    allows_none, _ = type_hint_explicitly_allows_none_with_expr(expr)
+    return allows_none
 
 
 class NoImplicitOptionalCommand(VisitorBasedCodemodCommand):
@@ -101,17 +127,18 @@ class NoImplicitOptionalCommand(VisitorBasedCodemodCommand):
             and isinstance(original_node.default, cst.Name)
             and original_node.default.value == "None"
         ):
-            if not type_hint_explicitly_allows_none(original_node.annotation.annotation):
-                new_annotation = cst.Annotation(
-                    cst.Subscript(
-                        value=cst.Name(value="Optional"),
-                        slice=[
-                            cst.SubscriptElement(
-                                cst.Index(value=original_node.annotation.annotation)
-                            )
-                        ],
-                    )
+            top_level_expr = original_node.annotation.annotation
+
+            allows_none, expr = type_hint_explicitly_allows_none_with_expr(top_level_expr)
+            if not allows_none:
+                new_expr = cst.Subscript(
+                    value=cst.Name(value="Optional"),
+                    slice=[cst.SubscriptElement(cst.Index(value=expr))],
                 )
+                if expr is not top_level_expr:  # happens with Annotated
+                    new_expr = top_level_expr.deep_replace(expr, new_expr)
+
+                new_annotation = cst.Annotation(new_expr)
                 AddImportsVisitor.add_needed_import(self.context, "typing", "Optional")
                 return updated_node.with_changes(annotation=new_annotation)
 
@@ -186,6 +213,13 @@ def test() -> None:
     assert type_hint_explicitly_allows_none(cst.parse_expression("_OptWhatever"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("WhateverOpt"))
 
+    assert not type_hint_explicitly_allows_none(cst.parse_expression("Annotated[int, ...]"))
+    assert type_hint_explicitly_allows_none(cst.parse_expression("Annotated[Optional[int], ...]"))
+    assert type_hint_explicitly_allows_none(
+        cst.parse_expression("typing.Annotated[Optional[int], ...]")
+    )
+    assert not type_hint_explicitly_allows_none(cst.parse_expression("t.Annotated[int, ...]"))
+
     cmd = NoImplicitOptionalCommand(CodemodContext())
 
     result = transform_module(cmd, "def foo(x: int = None): pass")
@@ -196,6 +230,13 @@ def test() -> None:
     assert isinstance(result, TransformSuccess)
     assert (
         result.code == "from typing import Optional\n\ndef foo(x: Optional[list[int]] = None): pass"
+    )
+
+    result = transform_module(cmd, "def foo(x: Annotated[int, str.isdigit] = None): pass")
+    assert isinstance(result, TransformSuccess)
+    assert (
+        result.code
+        == "from typing import Optional\n\ndef foo(x: Annotated[Optional[int], str.isdigit] = None): pass"
     )
 
 
