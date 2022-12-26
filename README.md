@@ -16,6 +16,9 @@ pip install no_implicit_optional
 no_implicit_optional <path>
 ```
 
+To make this tool use PEP 604 `X | None` syntax instead of `Optional[X]`, use the
+`--use-union-or` flag. Note that this syntax is only fully supported on Python 3.10 and newer.
+
 ## What's going on?
 
 By default, mypy 0.982 and earlier allowed eliding `Optional` for arguments with default values of
