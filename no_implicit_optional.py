@@ -121,6 +121,10 @@ def type_hint_explicitly_allows_none(expr: cst.BaseExpression) -> bool:
 
 
 class NoImplicitOptionalCommand(VisitorBasedCodemodCommand):
+    def __init__(self, context: CodemodContext, use_union_or: bool) -> None:
+        super().__init__(context)
+        self.use_union_or = use_union_or
+
     def leave_Param(self, original_node: cst.Param, updated_node: cst.Param) -> cst.Param:
         if (
             original_node.annotation is not None
@@ -132,15 +136,22 @@ class NoImplicitOptionalCommand(VisitorBasedCodemodCommand):
 
             allows_none, expr = type_hint_explicitly_allows_none_with_expr(top_level_expr)
             if not allows_none:
-                new_expr: cst.BaseExpression = cst.Subscript(
-                    value=cst.Name(value="Optional"),
-                    slice=[cst.SubscriptElement(cst.Index(value=expr))],
-                )
+                new_expr: cst.BaseExpression
+                if self.use_union_or:
+                    new_expr = cst.BinaryOperation(
+                        left=expr, operator=cst.BitOr(), right=cst.Name(value="None")
+                    )
+                else:
+                    new_expr = cst.Subscript(
+                        value=cst.Name(value="Optional"),
+                        slice=[cst.SubscriptElement(cst.Index(value=expr))],
+                    )
+                    AddImportsVisitor.add_needed_import(self.context, "typing", "Optional")
+
                 if expr is not top_level_expr:  # happens with Annotated
                     new_expr = top_level_expr.deep_replace(expr, new_expr)
 
                 new_annotation = cst.Annotation(new_expr)
-                AddImportsVisitor.add_needed_import(self.context, "typing", "Optional")
                 return updated_node.with_changes(annotation=new_annotation)
 
         return updated_node
@@ -150,6 +161,11 @@ def main() -> int:
     test()
 
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--use-union-or",
+        action="store_true",
+        help="Whether to use PEP 604 `X | None` syntax instead of `Optional[X]`",
+    )
     parser.add_argument("path")
     args = parser.parse_args()
 
@@ -158,7 +174,9 @@ def main() -> int:
     files = gather_files([base], include_stubs=True)
     try:
         result = parallel_exec_transform_with_prettyprint(
-            NoImplicitOptionalCommand(CodemodContext()), files, repo_root=root
+            NoImplicitOptionalCommand(CodemodContext(), use_union_or=args.use_union_or),
+            files,
+            repo_root=root,
         )
     except KeyboardInterrupt:
         print("Interrupted!", file=sys.stderr)
@@ -224,7 +242,7 @@ def test() -> None:
     )
     assert not type_hint_explicitly_allows_none(cst.parse_expression("t.Annotated[int, ...]"))
 
-    cmd = NoImplicitOptionalCommand(CodemodContext())
+    cmd = NoImplicitOptionalCommand(CodemodContext(), use_union_or=False)
 
     result = transform_module(cmd, "def foo(x: int = None): pass")
     assert isinstance(result, TransformSuccess)
@@ -242,6 +260,20 @@ def test() -> None:
         result.code
         == "from typing import Optional\n\ndef foo(x: Annotated[Optional[int], str.isdigit] = None): pass"
     )
+
+    cmd = NoImplicitOptionalCommand(CodemodContext(), use_union_or=True)
+
+    result = transform_module(cmd, "def foo(x: int = None): pass")
+    assert isinstance(result, TransformSuccess)
+    assert result.code == "def foo(x: int | None = None): pass"
+
+    result = transform_module(cmd, "def foo(x: list[int] = None): pass")
+    assert isinstance(result, TransformSuccess)
+    assert result.code == "def foo(x: list[int] | None = None): pass"
+
+    result = transform_module(cmd, "def foo(x: Annotated[int, str.isdigit] = None): pass")
+    assert isinstance(result, TransformSuccess)
+    assert result.code == "def foo(x: Annotated[int | None, str.isdigit] = None): pass"
 
 
 if __name__ == "__main__":
