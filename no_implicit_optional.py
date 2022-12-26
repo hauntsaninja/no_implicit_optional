@@ -23,7 +23,7 @@ def is_typing_optional(expr: cst.BaseExpression) -> bool:
         return (
             expr.attr.value == "Optional"
             and isinstance(expr.value, cst.Name)
-            and expr.value.value in ("typing", "t")
+            and expr.value.value in ("typing", "t", "T")
         )
     if isinstance(expr, cst.Subscript):
         return is_typing_optional(expr.value)
@@ -36,7 +36,7 @@ def is_typing_union_with_none(expr: cst.BaseExpression) -> bool:
             isinstance(expr.value, cst.Attribute)
             and expr.value.attr.value == "Union"
             and isinstance(expr.value.value, cst.Name)
-            and expr.value.value.value in ("typing", "t")
+            and expr.value.value.value in ("typing", "t", "T")
         )
         if has_union_base:
             return any(
@@ -66,7 +66,7 @@ def is_literal_with_none(expr: cst.BaseExpression) -> bool:
             isinstance(expr.value, cst.Attribute)
             and expr.value.attr.value == "Literal"
             and isinstance(expr.value.value, cst.Name)
-            and expr.value.value.value in ("typing", "t")
+            and expr.value.value.value in ("typing", "t", "T")
         )
         if has_literal_base:
             return any(
@@ -91,7 +91,7 @@ def is_typing_annotated(expr: cst.BaseExpression) -> bool:
         return (
             expr.attr.value == "Annotated"
             and isinstance(expr.value, cst.Name)
-            and expr.value.value in ("typing", "t")
+            and expr.value.value in ("typing", "t", "T")
         )
     if isinstance(expr, cst.Subscript):
         return is_typing_annotated(expr.value)
@@ -184,16 +184,19 @@ def test() -> None:
     assert type_hint_explicitly_allows_none(cst.parse_expression("Optional"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("Optional[int]"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("t.Optional[int]"))
+    assert type_hint_explicitly_allows_none(cst.parse_expression("T.Optional[int]"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("typing.Optional[int]"))
 
     assert type_hint_explicitly_allows_none(cst.parse_expression("Union[None, int]"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("Union[int, None]"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("t.Union[int, None]"))
+    assert type_hint_explicitly_allows_none(cst.parse_expression("T.Union[int, None]"))
     assert type_hint_explicitly_allows_none(cst.parse_expression("typing.Union[int, None]"))
 
     assert not type_hint_explicitly_allows_none(cst.parse_expression("Union"))
     assert not type_hint_explicitly_allows_none(cst.parse_expression("Union[int, str]"))
     assert not type_hint_explicitly_allows_none(cst.parse_expression("t.Union[int, str]"))
+    assert not type_hint_explicitly_allows_none(cst.parse_expression("T.Union[int, str]"))
     assert not type_hint_explicitly_allows_none(cst.parse_expression("typing.Union[int, str]"))
 
     assert type_hint_explicitly_allows_none(cst.parse_expression("int | None"))
