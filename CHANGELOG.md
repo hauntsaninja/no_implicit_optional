@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.3]
+
+- Add `--use-union-or` to use PEP 604 `X | None` syntax
+- Treat `T` as a possible alias for the `typing` module
+
 ## [v1.2]
 
 - Restore compatibility with Python 3.8 and older
