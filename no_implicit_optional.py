@@ -166,12 +166,14 @@ def main() -> int:
         action="store_true",
         help="Whether to use PEP 604 `X | None` syntax instead of `Optional[X]`",
     )
-    parser.add_argument("path")
+    parser.add_argument("path", nargs="+")
     args = parser.parse_args()
 
-    base = os.path.abspath(args.path)
-    root = base if os.path.isdir(base) else os.path.dirname(base)
-    files = gather_files([base], include_stubs=True)
+    bases = list(map(os.path.abspath, args.path))
+    root = os.path.commonpath(bases)
+    root = os.path.dirname(root) if os.path.isfile(root) else root
+
+    files = gather_files(bases, include_stubs=True)
     try:
         result = parallel_exec_transform_with_prettyprint(
             NoImplicitOptionalCommand(CodemodContext(), use_union_or=args.use_union_or),
