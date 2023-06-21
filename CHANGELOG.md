@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.4]
+
+- Support passing multiple paths to `no_implicit_optional`
+
 ## [v1.3]
 
 - Add `--use-union-or` to use PEP 604 `X | None` syntax

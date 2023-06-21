@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="no_implicit_optional",
-    version="1.3",
+    version="1.4",
     author="Shantanu Jain",
     author_email="hauntsaninja@gmail.com",
     description="A codemod to make your implicit optional type hints PEP 484 compliant.",
