@@ -1,0 +1,5 @@
+repos:
+  - repo: https://github.com/frostming/fix-future-annotations
+    rev: 1.4
+    hooks:
+      - id: no_implicit_optional
