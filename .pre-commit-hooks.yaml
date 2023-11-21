@@ -1,5 +1,5 @@
--   id: no-implicit-optional
-    name: no-implicit-optional
+-   id: no_implicit_optional
+    name: no_implicit_optional
     description: Upgrade the typing annotations syntax to PEP 585 and PEP 604.
     entry: no_implicit_optional
     language: python
