@@ -1,5 +1,5 @@
 repos:
   - repo: https://github.com/alex-rakowski/no_implicit_optional
-    rev: 1.4
+    rev: 0.1.4
     hooks:
       - id: no_implicit_optional
