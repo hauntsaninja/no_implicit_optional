@@ -1,6 +1,6 @@
--   id: no_implicit_optional
-    name: no_implicit_optional
-    description: Upgrade the typing annotations syntax to PEP 585 and PEP 604.
+-   id: no_implicit_optional_checker
+    name: no implicit optional checker
+    description: remove implicit optional args.
     entry: no_implicit_optional
     language: python
     types: [python]
