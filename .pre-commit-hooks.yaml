@@ -1,0 +1,8 @@
+- id: no_implicit_optional
+  name: no_implicit_optional
+  description: "A codemod to make your implicit optional type hints PEP 484 compliant"
+  entry: no_implicit_optional
+  language: python
+  minimum_pre_commit_version: 2.9.2
+  require_serial: true
+  types_or: [python, pyi]
